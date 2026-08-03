@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Öffentliche statische Kursansicht">
+  <meta name="theme-color" content="#115ea3">
+  <title>Kurs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script defer src="data/course-data.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Zum Inhalt springen</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <button class="menu-button" id="menuButton" type="button" aria-label="Navigation öffnen" aria-controls="sidebar" aria-expanded="false">☰</button>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">φ</span>
+        <div>
+          <p class="eyebrow">Öffentlicher Kurs</p>
+          <h1 id="courseTitle">Moodle-Kurs</h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <label class="search" aria-label="Kurs durchsuchen">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Kurs durchsuchen…" autocomplete="off">
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Kursnavigation">
+      <div class="course-meta">
+        <strong id="courseShortname"></strong>
+        <span id="courseCategory"></span>
+      </div>
+      <nav id="sectionNav"></nav>
+      <div class="sidebar-note">
+        <strong>Direkter Zugriff</strong>
+        <span>Keine Anmeldung erforderlich.</span>
+      </div>
+    </aside>
+
+    <main id="main" class="main-content" tabindex="-1">
+      <section class="hero" id="hero">
+        <div>
+          <p class="eyebrow">TGM11 · Physik</p>
+          <h2>Alle Materialien an einem Ort</h2>
+          <p>Öffne Themen, PDFs und Übungen direkt im Browser. Es müssen keine GitHub-Ordner geöffnet und keine Dateien lokal ausgeführt werden.</p>
+        </div>
+        <div class="hero-symbol" aria-hidden="true">v = Δs/Δt</div>
+      </section>
+
+      <div id="searchStatus" class="search-status" role="status" aria-live="polite"></div>
+      <section id="courseGrid" class="course-grid" aria-label="Kursbereiche"></section>
+      <section id="emptySearch" class="empty-state" hidden>
+        <div aria-hidden="true">⌕</div>
+        <h2>Keine Treffer</h2>
+        <p>Versuche einen anderen Suchbegriff.</p>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="viewerModal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="viewerTitle">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow" id="viewerType">Material</p>
+          <h2 id="viewerTitle">Material</h2>
+        </div>
+        <div class="modal-actions">
+          <a id="openNewTab" class="button secondary" href="#" target="_blank" rel="noopener" hidden>Neuer Tab</a>
+          <a id="downloadFile" class="button secondary" href="#" download hidden>Download</a>
+          <button class="icon-button" type="button" data-close-modal aria-label="Schließen">×</button>
+        </div>
+      </header>
+      <div class="modal-body" id="viewerBody"></div>
+    </section>
+  </div>
+
+  <template id="sectionTemplate">
+    <article class="section-card">
+      <button class="section-cover" type="button" aria-expanded="false">
+        <span class="cover-image" aria-hidden="true"></span>
+        <span class="cover-overlay"></span>
+        <span class="cover-text">
+          <span class="section-number"></span>
+          <strong class="section-title"></strong>
+          <small class="section-count"></small>
+        </span>
+        <span class="chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="section-content" hidden>
+        <div class="section-summary prose"></div>
+        <div class="section-items"></div>
+      </div>
+    </article>
+  </template>
+
+  <template id="subsectionTemplate">
+    <section class="subsection">
+      <button class="subsection-toggle" type="button" aria-expanded="false">
+        <span><span class="item-icon" aria-hidden="true">▦</span><strong class="subsection-title"></strong></span>
+        <span class="subsection-meta"></span>
+        <span class="chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="subsection-body" hidden>
+        <div class="subsection-summary prose"></div>
+        <div class="subsection-items"></div>
+      </div>
+    </section>
+  </template>
+</body>
+</html>

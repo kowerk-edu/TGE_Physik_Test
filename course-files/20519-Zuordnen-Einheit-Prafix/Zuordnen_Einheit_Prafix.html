@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TGM11 Physik – Vier-Felder-Zuordnung</title>
+  <style>
+    :root {
+      --petrol: #005351;
+      --green: #56AF31;
+      --light-green: #EEF8EA;
+      --white: #FFFFFF;
+      --red: #FF2D2D;
+      --flash-green: #75FF4A;
+      --shadow: 0 10px 26px rgba(0, 83, 81, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--white);
+      color: var(--petrol);
+      touch-action: none;
+      user-select: none;
+    }
+
+    .game {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 8px;
+      padding: 8px;
+      background: var(--petrol);
+    }
+
+    .zone {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      border: 4px solid var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+      overflow: hidden;
+    }
+
+    .zone:nth-child(1),
+    .zone:nth-child(4) {
+      background: var(--light-green);
+    }
+
+    .zone:nth-child(2),
+    .zone:nth-child(3) {
+      background: var(--white);
+    }
+
+    .zone:hover,
+    .zone.drag-over {
+      transform: scale(0.992);
+      box-shadow: inset 0 0 0 7px rgba(86, 175, 49, 0.22);
+    }
+
+    .zone-title {
+      text-align: center;
+      font-size: clamp(1.15rem, 3.4vw, 2.7rem);
+      font-weight: 900;
+      line-height: 1.05;
+      color: var(--petrol);
+    }
+
+    .zone-help {
+      display: block;
+      margin-top: 10px;
+      font-size: clamp(0.66rem, 1.5vw, 1rem);
+      font-weight: 700;
+      line-height: 1.2;
+      opacity: 0.78;
+    }
+
+    .zone-icon {
+      display: block;
+      margin-bottom: 8px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+    }
+
+    .status {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      z-index: 20;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 14px;
+      border: 3px solid var(--petrol);
+      border-radius: 999px;
+      background: var(--white);
+      box-shadow: var(--shadow);
+      font-size: clamp(0.78rem, 1.8vw, 1rem);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .tile {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 30;
+      width: clamp(150px, 20vw, 240px);
+      height: clamp(92px, 14vh, 132px);
+      transform: translate(-50%, -50%);
+      border: 5px solid var(--green);
+      border-radius: 18px;
+      background: var(--white);
+      color: var(--petrol);
+      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.28);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      text-align: center;
+      font-size: clamp(1.35rem, 3.6vw, 2.4rem);
+      font-weight: 900;
+      line-height: 1.05;
+      cursor: grab;
+      touch-action: none;
+      transition: box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .tile:hover {
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+    }
+
+    .tile.dragging {
+      cursor: grabbing;
+      transition: none;
+      box-shadow: 0 22px 50px rgba(0, 0, 0, 0.38);
+    }
+
+    .tile.shake {
+      animation: shake 0.35s ease;
+    }
+
+    .hint {
+      position: fixed;
+      left: 50%;
+      bottom: 13px;
+      z-index: 20;
+      transform: translateX(-50%);
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(0, 83, 81, 0.92);
+      color: white;
+      font-size: clamp(0.7rem, 1.6vw, 0.9rem);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .flash {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .flash.correct {
+      animation: greenFlash 0.52s ease;
+    }
+
+    .flash.wrong {
+      animation: redFlash 0.52s ease;
+    }
+
+    .finished {
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(0, 83, 81, 0.84);
+    }
+
+    .finished.show {
+      display: grid;
+    }
+
+    .finished-box {
+      width: min(430px, 92vw);
+      padding: 28px;
+      border: 6px solid var(--green);
+      border-radius: 22px;
+      background: var(--white);
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .finished-box h2 {
+      margin: 0 0 10px;
+      font-size: 2rem;
+    }
+
+    .finished-box p {
+      margin: 0 0 18px;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .restart {
+      width: 100%;
+      min-height: 48px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--green);
+      color: white;
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    @keyframes shake {
+      0% { transform: translate(-50%, -50%) translateX(0); }
+      25% { transform: translate(-50%, -50%) translateX(-12px); }
+      50% { transform: translate(-50%, -50%) translateX(12px); }
+      75% { transform: translate(-50%, -50%) translateX(-8px); }
+      100% { transform: translate(-50%, -50%) translateX(0); }
+    }
+
+    @keyframes greenFlash {
+      0% { opacity: 0; background: var(--flash-green); }
+      28% { opacity: 0.82; background: var(--flash-green); }
+      100% { opacity: 0; background: var(--flash-green); }
+    }
+
+    @keyframes redFlash {
+      0% { opacity: 0; background: var(--red); }
+      28% { opacity: 0.82; background: var(--red); }
+      100% { opacity: 0; background: var(--red); }
+    }
+
+    @media (max-width: 650px) {
+      .game {
+        gap: 5px;
+        padding: 5px;
+      }
+
+      .zone {
+        border-width: 3px;
+      }
+
+      .zone-title {
+        font-size: clamp(0.92rem, 4.8vw, 1.45rem);
+      }
+
+      .zone-help {
+        margin-top: 5px;
+        font-size: clamp(0.56rem, 2.5vw, 0.76rem);
+      }
+
+      .zone-icon {
+        font-size: 1.5rem;
+        margin-bottom: 4px;
+      }
+
+      .tile {
+        width: clamp(135px, 42vw, 190px);
+        height: clamp(82px, 13vh, 110px);
+        border-width: 4px;
+        font-size: clamp(1.15rem, 5.2vw, 1.7rem);
+      }
+
+      .status {
+        top: 8px;
+        padding: 6px 10px;
+        gap: 7px;
+      }
+
+      .hint {
+        bottom: 7px;
+      }
+    }
+
+    @media (max-height: 520px) {
+      .zone-title {
+        font-size: clamp(0.82rem, 4.2vh, 1.25rem);
+      }
+
+      .zone-help {
+        margin-top: 3px;
+        font-size: 0.58rem;
+      }
+
+      .zone-icon {
+        display: none;
+      }
+
+      .tile {
+        height: 72px;
+        font-size: 1.1rem;
+      }
+
+      .status {
+        top: 6px;
+        padding: 4px 9px;
+      }
+
+      .hint {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .zone,
+      .tile {
+        transition: none;
+      }
+
+      .tile.shake,
+      .flash.correct,
+      .flash.wrong {
+        animation-duration: 0.01ms;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="game">
+    <section class="zone" data-category="formula">
+      <div class="zone-title">
+        <span class="zone-icon">🔤</span>
+        Formelzeichen
+        <span class="zone-help">Symbol einer physikalischen Größe</span>
+      </div>
+    </section>
+
+    <section class="zone" data-category="derived">
+      <div class="zone-title">
+        <span class="zone-icon">⚙️</span>
+        Abgeleitete SI-Einheit
+        <span class="zone-help">Aus Basiseinheiten zusammengesetzt</span>
+      </div>
+    </section>
+
+    <section class="zone" data-category="base">
+      <div class="zone-title">
+        <span class="zone-icon">📏</span>
+        SI-Basiseinheit
+        <span class="zone-help">Grundlegende Einheit des SI</span>
+      </div>
+    </section>
+
+    <section class="zone" data-category="prefix">
+      <div class="zone-title">
+        <span class="zone-icon">🔟</span>
+        SI-Präfix
+        <span class="zone-help">Vorsatz vor einer Einheit</span>
+      </div>
+    </section>
+  </main>
+
+  <div class="status">
+    <span>Richtig: <span id="correctCount">0</span>/16</span>
+    <span>Fehler: <span id="errorCount">0</span></span>
+  </div>
+
+  <div class="tile" id="tile" role="button" tabindex="0" aria-label="Zuordnungskarte"></div>
+
+  <div class="hint">Karte ziehen oder einen Bereich anklicken</div>
+  <div class="flash" id="flash"></div>
+
+  <div class="finished" id="finished">
+    <div class="finished-box">
+      <h2>Geschafft! 🎉</h2>
+      <p id="resultText"></p>
+      <button class="restart" id="restart" type="button">Noch einmal</button>
+    </div>
+  </div>
+
+  <script>
+    const items = [
+      { text: "v", category: "formula" },
+      { text: "F", category: "formula" },
+      { text: "t", category: "formula" },
+      { text: "I", category: "formula" },
+
+      { text: "Newton (N)", category: "derived" },
+      { text: "Joule (J)", category: "derived" },
+      { text: "Pascal (Pa)", category: "derived" },
+      { text: "Hertz (Hz)", category: "derived" },
+
+      { text: "Meter (m)", category: "base" },
+      { text: "Kilogramm (kg)", category: "base" },
+      { text: "Sekunde (s)", category: "base" },
+      { text: "Ampere (A)", category: "base" },
+
+      { text: "Milli (m)", category: "prefix" },
+      { text: "Kilo (k)", category: "prefix" },
+      { text: "Mega (M)", category: "prefix" },
+      { text: "Giga (G)", category: "prefix" }
+    ];
+
+    const tile = document.getElementById("tile");
+    const flash = document.getElementById("flash");
+    const correctCount = document.getElementById("correctCount");
+    const errorCount = document.getElementById("errorCount");
+    const finished = document.getElementById("finished");
+    const resultText = document.getElementById("resultText");
+    const zones = [...document.querySelectorAll(".zone")];
+
+    let deck = [];
+    let current = null;
+    let correct = 0;
+    let errors = 0;
+    let dragging = false;
+    let pointerOffsetX = 0;
+    let pointerOffsetY = 0;
+
+    function shuffle(list) {
+      const copy = [...list];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function centerTile() {
+      tile.style.left = "50%";
+      tile.style.top = "50%";
+      tile.style.transform = "translate(-50%, -50%)";
+    }
+
+    function showNext() {
+      if (deck.length === 0) {
+        finishGame();
+        return;
+      }
+
+      current = deck.shift();
+      tile.textContent = current.text;
+      tile.setAttribute("aria-label", `${current.text} zuordnen`);
+      centerTile();
+    }
+
+    function triggerFlash(type) {
+      flash.className = "flash";
+      void flash.offsetWidth;
+      flash.classList.add(type);
+    }
+
+    function submit(category) {
+      if (!current) return;
+
+      if (category === current.category) {
+        correct++;
+        correctCount.textContent = correct;
+        triggerFlash("correct");
+        setTimeout(showNext, 430);
+      } else {
+        errors++;
+        errorCount.textContent = errors;
+        triggerFlash("wrong");
+        tile.classList.remove("shake");
+        void tile.offsetWidth;
+        tile.classList.add("shake");
+        setTimeout(() => tile.classList.remove("shake"), 360);
+        centerTile();
+      }
+    }
+
+    function finishGame() {
+      current = null;
+      tile.style.display = "none";
+      resultText.textContent = `16 Begriffe richtig zugeordnet · ${errors} Fehler`;
+      finished.classList.add("show");
+    }
+
+    function resetGame() {
+      deck = shuffle(items);
+      correct = 0;
+      errors = 0;
+      correctCount.textContent = "0";
+      errorCount.textContent = "0";
+      tile.style.display = "flex";
+      finished.classList.remove("show");
+      showNext();
+    }
+
+    zones.forEach(zone => {
+      zone.addEventListener("click", () => submit(zone.dataset.category));
+
+      zone.addEventListener("dragover", event => {
+        event.preventDefault();
+        zone.classList.add("drag-over");
+      });
+
+      zone.addEventListener("dragleave", () => {
+        zone.classList.remove("drag-over");
+      });
+
+      zone.addEventListener("drop", event => {
+        event.preventDefault();
+        zone.classList.remove("drag-over");
+        submit(zone.dataset.category);
+      });
+    });
+
+    tile.draggable = true;
+
+    tile.addEventListener("dragstart", event => {
+      event.dataTransfer.setData("text/plain", current ? current.text : "");
+      event.dataTransfer.effectAllowed = "move";
+    });
+
+    tile.addEventListener("pointerdown", event => {
+      if (event.pointerType === "mouse") return;
+      dragging = true;
+      tile.setPointerCapture(event.pointerId);
+      tile.classList.add("dragging");
+
+      const rect = tile.getBoundingClientRect();
+      pointerOffsetX = event.clientX - rect.left;
+      pointerOffsetY = event.clientY - rect.top;
+
+      tile.style.transform = "none";
+    });
+
+    tile.addEventListener("pointermove", event => {
+      if (!dragging) return;
+      tile.style.left = `${event.clientX - pointerOffsetX}px`;
+      tile.style.top = `${event.clientY - pointerOffsetY}px`;
+
+      zones.forEach(zone => {
+        const rect = zone.getBoundingClientRect();
+        const over =
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom;
+        zone.classList.toggle("drag-over", over);
+      });
+    });
+
+    tile.addEventListener("pointerup", event => {
+      if (!dragging) return;
+      dragging = false;
+      tile.classList.remove("dragging");
+
+      const target = zones.find(zone => {
+        const rect = zone.getBoundingClientRect();
+        return (
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom
+        );
+      });
+
+      zones.forEach(zone => zone.classList.remove("drag-over"));
+
+      if (target) {
+        submit(target.dataset.category);
+      } else {
+        centerTile();
+      }
+    });
+
+    tile.addEventListener("keydown", event => {
+      const map = {
+        "1": "formula",
+        "2": "derived",
+        "3": "base",
+        "4": "prefix"
+      };
+
+      if (map[event.key]) {
+        submit(map[event.key]);
+      }
+    });
+
+    document.getElementById("restart").addEventListener("click", resetGame);
+
+    resetGame();
+  </script>
+</body>
+</html>

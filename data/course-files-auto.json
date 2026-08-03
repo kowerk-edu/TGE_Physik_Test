@@ -1,0 +1,9 @@
+---
+layout: null
+---
+[
+{% assign course_files = site.static_files | where_exp: "file", "file.path contains '/course-files/'" | sort: "path" %}
+{% for file in course_files %}
+  {"path": {{ file.path | remove_first: "/" | jsonify }}, "filename": {{ file.name | jsonify }}}{% unless forloop.last %},{% endunless %}
+{% endfor %}
+]

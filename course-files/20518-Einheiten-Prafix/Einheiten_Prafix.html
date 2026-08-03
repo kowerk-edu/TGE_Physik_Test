@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SI-Präfixe Memory</title>
+  <style>
+    :root {
+      --blue: #1357B8;
+      --light-blue: #A9D7FF;
+      --white: #ffffff;
+      --shadow: 0 6px 18px rgba(19, 87, 184, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--blue);
+      background: var(--white);
+    }
+
+    .app {
+      width: min(1100px, 98vw);
+      height: 100dvh;
+      margin: 0 auto;
+      padding: 8px;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 6px;
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      font-size: clamp(1.45rem, 3.5vh, 2.2rem);
+      line-height: 1.1;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .stat,
+    .button {
+      min-height: 40px;
+      border: 2px solid var(--blue);
+      border-radius: 9px;
+      background: var(--white);
+      color: var(--blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-weight: 700;
+      font-size: clamp(0.8rem, 1.9vh, 1rem);
+    }
+
+    .button {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: var(--white);
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .button:hover {
+      filter: brightness(0.95);
+      transform: translateY(-1px);
+    }
+
+    .message {
+      height: 24px;
+      margin: 0;
+      text-align: center;
+      font-size: clamp(0.82rem, 1.8vh, 1rem);
+      font-weight: 700;
+      line-height: 24px;
+    }
+
+    .game-board {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: repeat(4, minmax(0, 1fr));
+      gap: clamp(5px, 0.8vh, 9px);
+      perspective: 1000px;
+    }
+
+    .memory-card {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      cursor: pointer;
+      transform-style: preserve-3d;
+      transition: transform 0.35s ease;
+    }
+
+    .memory-card.flipped,
+    .memory-card.matched {
+      transform: rotateY(180deg);
+    }
+
+    .memory-card.matched {
+      cursor: default;
+    }
+
+    .memory-card.match-pop {
+      animation: matchPop 0.55s ease;
+    }
+
+    .face {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .back {
+      background: var(--blue);
+      color: var(--white);
+      border: 4px solid var(--light-blue);
+      font-size: clamp(1.05rem, 4vh, 2.4rem);
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+
+    .front {
+      transform: rotateY(180deg);
+      padding: 6px;
+      text-align: center;
+      background: var(--white);
+      border: 3px solid var(--blue);
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+    .memory-card.matched .front {
+      border-color: var(--light-blue);
+      box-shadow: 0 0 0 2px rgba(169, 215, 255, 0.35), 0 0 20px rgba(19, 87, 184, 0.28);
+    }
+
+    .emoji {
+      display: block;
+      margin-bottom: 3px;
+      font-size: clamp(1rem, 2.4vh, 1.4rem);
+      line-height: 1;
+    }
+
+    .label {
+      font-size: clamp(0.82rem, 2.7vh, 1.32rem);
+      font-weight: 800;
+      line-height: 1.05;
+      overflow-wrap: anywhere;
+    }
+
+    .symbol {
+      display: block;
+      margin-top: 4px;
+      color: var(--blue);
+      font-size: clamp(0.76rem, 2.2vh, 1.08rem);
+      font-weight: 900;
+    }
+
+    .win-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(19, 87, 184, 0.75);
+      z-index: 10;
+    }
+
+    .win-overlay.show {
+      display: grid;
+    }
+
+    .win-box {
+      width: min(360px, 90vw);
+      padding: 22px;
+      border-radius: 14px;
+      text-align: center;
+      background: var(--white);
+      border: 5px solid var(--light-blue);
+      box-shadow: var(--shadow);
+    }
+
+    .win-box h2 {
+      margin: 0 0 8px;
+    }
+
+    .win-box p {
+      margin: 0 0 14px;
+      font-size: 1rem;
+    }
+
+    .win-box .button {
+      width: 100%;
+      min-height: 44px;
+    }
+
+    .memory-card:focus-visible,
+    .button:focus-visible {
+      outline: 3px solid var(--light-blue);
+      outline-offset: 2px;
+    }
+
+    @keyframes matchPop {
+      0%   { transform: rotateY(180deg) scale(1); }
+      35%  { transform: rotateY(180deg) scale(1.08); }
+      70%  { transform: rotateY(180deg) scale(0.98); }
+      100% { transform: rotateY(180deg) scale(1); }
+    }
+
+    @media (max-width: 540px) {
+      .app {
+        width: 100vw;
+        padding: 5px;
+        gap: 4px;
+      }
+
+      .toolbar {
+        gap: 4px;
+      }
+
+      .stat,
+      .button {
+        min-height: 32px;
+        border-radius: 7px;
+        font-size: 0.68rem;
+      }
+
+      .game-board {
+        gap: 4px;
+      }
+
+      .face,
+      .memory-card {
+        border-radius: 7px;
+      }
+
+      .front {
+        padding: 3px;
+        border-width: 2px;
+      }
+
+      .back {
+        border-width: 3px;
+      }
+
+      .emoji {
+        font-size: clamp(0.82rem, 3vw, 1rem);
+        margin-bottom: 2px;
+      }
+
+      .label {
+        font-size: clamp(0.62rem, 2.9vw, 0.86rem);
+      }
+
+      .symbol {
+        font-size: clamp(0.6rem, 2.4vw, 0.8rem);
+      }
+    }
+
+    @media (max-height: 570px) {
+      .app {
+        padding: 4px;
+        gap: 3px;
+      }
+
+      h1 {
+        font-size: 1.08rem;
+      }
+
+      .stat,
+      .button {
+        min-height: 28px;
+      }
+
+      .message {
+        height: 18px;
+        line-height: 18px;
+      }
+
+      .game-board {
+        gap: 3px;
+      }
+
+      .emoji {
+        font-size: 0.9rem;
+      }
+
+      .label {
+        font-size: 0.72rem;
+      }
+
+      .symbol {
+        font-size: 0.64rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .memory-card,
+      .button,
+      .front {
+        transition: none;
+      }
+
+      .memory-card.match-pop {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>SI-Präfixe Memory</h1>
+
+    <section class="toolbar" aria-label="Spielstand">
+      <div class="stat">Versuche: <span id="moves">0</span></div>
+      <div class="stat">Paare: <span id="found">0</span>/8</div>
+      <div class="stat">Zeit: <span id="time">00:00</span></div>
+      <button class="button" id="restart" type="button">Neu</button>
+    </section>
+
+    <p class="message" id="message" aria-live="polite">Karte wählen</p>
+
+    <section class="game-board" id="board" aria-label="Memory-Spielfeld"></section>
+  </main>
+
+  <div class="win-overlay" id="winOverlay" aria-live="polite">
+    <div class="win-box">
+      <h2>Geschafft! 🎉</h2>
+      <p id="result"></p>
+      <button class="button" id="again" type="button">Nochmal</button>
+    </div>
+  </div>
+
+  <script>
+    const pairs = [
+      { id: "kilo", prefix: "Kilo", symbol: "k", power: "10³", emoji: "📦" },
+      { id: "mega", prefix: "Mega", symbol: "M", power: "10⁶", emoji: "🏢" },
+      { id: "giga", prefix: "Giga", symbol: "G", power: "10⁹", emoji: "🌆" },
+      { id: "tera", prefix: "Tera", symbol: "T", power: "10¹²", emoji: "🌍" },
+      { id: "zenti", prefix: "Zenti", symbol: "c", power: "10⁻²", emoji: "📏" },
+      { id: "milli", prefix: "Milli", symbol: "m", power: "10⁻³", emoji: "💧" },
+      { id: "mikro", prefix: "Mikro", symbol: "µ", power: "10⁻⁶", emoji: "🔬" },
+      { id: "nano", prefix: "Nano", symbol: "n", power: "10⁻⁹", emoji: "🧬" }
+    ];
+
+    const board = document.getElementById("board");
+    const movesElement = document.getElementById("moves");
+    const foundElement = document.getElementById("found");
+    const timeElement = document.getElementById("time");
+    const messageElement = document.getElementById("message");
+    const winOverlay = document.getElementById("winOverlay");
+    const resultElement = document.getElementById("result");
+
+    let firstCard = null;
+    let secondCard = null;
+    let locked = false;
+    let moves = 0;
+    let found = 0;
+    let seconds = 0;
+    let timer = null;
+
+    function shuffle(items) {
+      const result = [...items];
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    }
+
+    function makeDeck() {
+      return shuffle(
+        pairs.flatMap(pair => [
+          {
+            pairId: pair.id,
+            type: "prefix",
+            label: pair.prefix,
+            symbol: pair.symbol,
+            emoji: pair.emoji
+          },
+          {
+            pairId: pair.id,
+            type: "power",
+            label: pair.power,
+            symbol: "",
+            emoji: pair.emoji
+          }
+        ])
+      );
+    }
+
+    function startTimer() {
+      if (timer) return;
+      timer = setInterval(() => {
+        seconds++;
+        const minutes = String(Math.floor(seconds / 60)).padStart(2, "0");
+        const rest = String(seconds % 60).padStart(2, "0");
+        timeElement.textContent = `${minutes}:${rest}`;
+      }, 1000);
+    }
+
+    function createCard(data, index) {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "memory-card";
+      card.dataset.pairId = data.pairId;
+      card.dataset.type = data.type;
+      card.setAttribute("aria-label", `Verdeckte Karte ${index + 1}`);
+      card.innerHTML = `
+        <span class="face back" aria-hidden="true">10ˣ</span>
+        <span class="face front">
+          <span class="label">
+            <span class="emoji">${data.emoji}</span>
+            ${data.label}
+            ${data.symbol ? `<span class="symbol">${data.symbol}</span>` : ""}
+          </span>
+        </span>
+      `;
+      card.addEventListener("click", () => flip(card, data));
+      return card;
+    }
+
+    function render() {
+      board.innerHTML = "";
+      makeDeck().forEach((data, index) => {
+        board.appendChild(createCard(data, index));
+      });
+    }
+
+    function triggerMatchEffect(cardA, cardB) {
+      [cardA, cardB].forEach(card => {
+        card.classList.add("match-pop");
+        setTimeout(() => card.classList.remove("match-pop"), 550);
+      });
+    }
+
+    function flip(card, data) {
+      if (locked || card === firstCard || card.classList.contains("matched")) return;
+
+      startTimer();
+      card.classList.add("flipped");
+      card.setAttribute("aria-label", data.label);
+
+      if (!firstCard) {
+        firstCard = card;
+        messageElement.textContent = "Passende Karte wählen";
+        return;
+      }
+
+      secondCard = card;
+      moves++;
+      movesElement.textContent = moves;
+
+      const samePair = firstCard.dataset.pairId === secondCard.dataset.pairId;
+      const differentType = firstCard.dataset.type !== secondCard.dataset.type;
+
+      if (samePair && differentType) {
+        firstCard.classList.add("matched");
+        secondCard.classList.add("matched");
+        firstCard.disabled = true;
+        secondCard.disabled = true;
+        triggerMatchEffect(firstCard, secondCard);
+        found++;
+        foundElement.textContent = found;
+        messageElement.textContent = "Richtig! ✅";
+        resetTurn();
+
+        if (found === pairs.length) {
+          finish();
+        }
+      } else {
+        locked = true;
+        messageElement.textContent = "Nicht passend";
+        setTimeout(() => {
+          firstCard.classList.remove("flipped");
+          secondCard.classList.remove("flipped");
+          firstCard.setAttribute("aria-label", "Verdeckte Karte");
+          secondCard.setAttribute("aria-label", "Verdeckte Karte");
+          resetTurn();
+        }, 700);
+      }
+    }
+
+    function resetTurn() {
+      firstCard = null;
+      secondCard = null;
+      locked = false;
+    }
+
+    function finish() {
+      clearInterval(timer);
+      timer = null;
+      resultElement.textContent =
+        `${moves} Versuche · ${timeElement.textContent}`;
+      winOverlay.classList.add("show");
+    }
+
+    function resetGame() {
+      clearInterval(timer);
+      timer = null;
+      firstCard = null;
+      secondCard = null;
+      locked = false;
+      moves = 0;
+      found = 0;
+      seconds = 0;
+      movesElement.textContent = "0";
+      foundElement.textContent = "0";
+      timeElement.textContent = "00:00";
+      messageElement.textContent = "Karte wählen";
+      winOverlay.classList.remove("show");
+      render();
+    }
+
+    document.getElementById("restart").addEventListener("click", resetGame);
+    document.getElementById("again").addEventListener("click", resetGame);
+
+    resetGame();
+  </script>
+</body>
+</html>
